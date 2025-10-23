@@ -10,12 +10,11 @@ import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
-    // 1. ConfigModule: Carga el .env y hace las variables accesibles globalmente
+
     ConfigModule.forRoot({
       isGlobal: true, 
     }),
 
-    // 2. TypeOrmModule: Configura la conexión a PostgreSQL
     TypeOrmModule.forRoot({
       // Usamos las variables del .env que ConfigModule cargó
       type: process.env.DB_TYPE as any, 
@@ -32,7 +31,6 @@ import { AuthModule } from './auth/auth.module';
       synchronize: true, 
     }),
 
-    // 3. Módulos de la Aplicación
     UsersModule, 
     AuthModule,
   ],
