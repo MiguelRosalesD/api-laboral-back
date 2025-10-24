@@ -7,6 +7,7 @@ import { ConfigModule } from '@nestjs/config';
 // Importamos los módulos de funcionalidad que ya generamos (aunque estén vacíos)
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { StatusModule } from './status/status.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { AuthModule } from './auth/auth.module';
 
     UsersModule, 
     AuthModule,
+    StatusModule,
   ],
   controllers: [],
   providers: [],
