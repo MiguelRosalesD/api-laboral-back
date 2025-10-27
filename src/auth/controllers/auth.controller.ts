@@ -22,4 +22,10 @@ export class AuthController {
   async register (@Body() registerDto: registerDto){
     return this.authService.register(registerDto);
   }
+
+  @Post('refresh')
+  @ApiOperation({ summary: 'Refrescar el token de acceso usando el refresh token' })
+  async refresh(@Body('refresh_token') refreshToken: string) {
+    return this.authService.refresh(refreshToken);
+}
 }

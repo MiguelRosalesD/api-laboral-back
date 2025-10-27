@@ -16,6 +16,8 @@ export class AuthService {
     private readonly jwtService: JwtService, // Inyectamos JwtService
   ) {} 
   
+
+  
   async createFrontPayload(payload_user: Omit<User, 'password'>) {
     // Payload simple para ambos tokens
     const tokenPayload: Record<string, unknown> = {
@@ -53,6 +55,8 @@ export class AuthService {
     };
   }
 
+
+
   async login(loginDto: loginDto) {
     
     // Busca el usuario por email (delegado a UsersService)
@@ -82,4 +86,37 @@ export class AuthService {
   async register(userData: registerDto): Promise<User> {
     return this.usersService.create(userData);
   }
+
+
+
+  async refresh(refreshToken: string) {
+  try {
+    const refresh_secret = process.env.JWT_REFRESH_SECRET ?? process.env.JWT_SECRET;
+
+    // Verificar que el refresh token es válido
+    const payload = await this.jwtService.verifyAsync(refreshToken, { secret: refresh_secret });
+
+    // Buscar usuario en la base de datos (por seguridad)
+    const user = await this.usersService.findOneByEmail(payload.email);
+    if (!user) throw new UnauthorizedException('Usuario no encontrado');
+
+    // Crear un nuevo access token
+    const tokenPayload = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      nombre: user.nombre,
+    };
+
+    const access_token = await this.jwtService.signAsync(tokenPayload);
+
+    // Devuelve solo el nuevo token y la nueva fecha de expiración
+    return {
+      access_token,
+      expires_in: new Date().setTime(new Date().getTime() + EXPIRATION_TIME_MS),
+    };
+  } catch (error) {
+    throw new UnauthorizedException('Refresh token inválido o expirado');
+  }
+}
 }
