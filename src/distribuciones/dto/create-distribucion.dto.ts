@@ -1,4 +1,5 @@
 import { IsInt, IsNumber, IsDateString, IsString, IsIn, IsNotEmpty } from 'class-validator';
+import { Min, Max } from 'class-validator';
 
 export class CreateDistribucionDto {
   @IsInt()
@@ -19,6 +20,8 @@ export class CreateDistribucionDto {
 
   @IsNumber()
   @IsNotEmpty()
+  @Min(0)
+  @Max(100)
   porcentaje: number;
 
   @IsString()
