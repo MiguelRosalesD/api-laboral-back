@@ -8,6 +8,7 @@ import { PerfilesModule } from './perfiles/perfiles.module';
 import { ProyectosModule } from './proyectos/proyectos.module';
 import { DistribucionesModule } from './distribuciones/distribuciones.module';
 import { RegistrosModule } from './registros/registros.module';
+import { ImportModule } from './import/import.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { RegistrosModule } from './registros/registros.module';
     ProyectosModule,
     DistribucionesModule,
     RegistrosModule,
+    ImportModule,
   ],
   controllers: [],
   providers: [],

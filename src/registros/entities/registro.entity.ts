@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Perfil } from '../../perfiles/entities/perfil.entity';
 
 @Entity('registros')
@@ -6,16 +6,20 @@ export class Registro {
   @PrimaryGeneratedColumn('increment')
   id: number;
 
+  /* @Column()
+  perfil_id: number; */
+
   @ManyToOne(() => Perfil, (perfil) => perfil.registros, { eager: true })
+  /* @JoinColumn({ name: 'perfil_id' }) */
   perfil: Perfil;
 
   @Column({ type: 'varchar', length: 20 })
   tipoDato:  'real' | 'estimacion';
 
-  @Column({ type: 'int' })
+  @Column({ type: 'float' })
   devengado: number;
 
-  @Column({ type: 'int' })
+  @Column({ type: 'float' })
   aportacion: number;
 
   @Column({ type: 'int' })

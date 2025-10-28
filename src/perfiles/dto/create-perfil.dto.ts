@@ -9,6 +9,6 @@ export class CreatePerfilDto {
   @IsString()
   @IsNotEmpty()
   @Length(1, 20)
-  @Matches(/^\d{8][A-Z]$/, { message: 'DNI minválido'})
+  //@Matches(/^[0-9]{8][A-Z]$/, { message: 'DNI inválido'})
   dni: string;
 }
