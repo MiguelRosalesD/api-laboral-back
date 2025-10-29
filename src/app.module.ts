@@ -10,6 +10,7 @@ import { DistribucionesModule } from './distribuciones/distribuciones.module';
 import { RegistrosModule } from './registros/registros.module';
 import { ImportModule } from './import/import.module';
 import { CreateUploadsFolderMiddleware } from './common/middleware/create-uploads-folder.middleware';
+import { CalculosModule } from './calculos/calculos.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { CreateUploadsFolderMiddleware } from './common/middleware/create-upload
     DistribucionesModule,
     RegistrosModule,
     ImportModule,
+    CalculosModule,
   ],
   controllers: [],
   providers: [],

@@ -18,12 +18,12 @@ export class DistribucionesService {
     private readonly proyectoRepository: Repository<Proyecto>,
   ) {}
 
-  async create(createDto: CreateDistribucionDto): Promise<Distribucion> {
-    const perfil = await this.perfilRepository.findOne({ where: { id: createDto.id_perfil } });
-    if (!perfil) throw new NotFoundException(`Perfil con id ${createDto.id_perfil} no encontrado`);
+  async create(createDto: CreateDistribucionDto) {
+    const perfil = await this.perfilRepository.findOne({ where: { id: createDto.perfilId } });
+    if (!perfil) throw new NotFoundException(`Perfil con id ${createDto.perfilId} no encontrado`);
 
-    const proyecto = await this.proyectoRepository.findOne({ where: { id: createDto.id_proyecto } });
-    if (!proyecto) throw new NotFoundException(`Proyecto con id ${createDto.id_proyecto} no encontrado`);
+    const proyecto = await this.proyectoRepository.findOne({ where: { id: createDto.proyectoId } });
+    if (!proyecto) throw new NotFoundException(`Proyecto con id ${createDto.proyectoId} no encontrado`);
 
     const distribucion = this.distribucionRepository.create({
       ...createDto,
@@ -44,18 +44,18 @@ export class DistribucionesService {
     return distribucion;
   }
 
-  async update(id: number, updateDto: UpdateDistribucionDto): Promise<Distribucion> {
+  async update(id: number, updateDto: UpdateDistribucionDto) {
     const distribucion = await this.findOne(id);
 
-    if (updateDto.id_perfil) {
-      const perfil = await this.perfilRepository.findOne({ where: { id: updateDto.id_perfil } });
-      if (!perfil) throw new NotFoundException(`Perfil con id ${updateDto.id_perfil} no encontrado`);
+    if (updateDto.perfilId) {
+      const perfil = await this.perfilRepository.findOne({ where: { id: updateDto.perfilId } });
+      if (!perfil) throw new NotFoundException(`Perfil con id ${updateDto.perfilId} no encontrado`);
       distribucion.perfil = perfil;
     }
 
-    if (updateDto.id_proyecto) {
-      const proyecto = await this.proyectoRepository.findOne({ where: { id: updateDto.id_proyecto } });
-      if (!proyecto) throw new NotFoundException(`Proyecto con id ${updateDto.id_proyecto} no encontrado`);
+    if (updateDto.proyectoId) {
+      const proyecto = await this.proyectoRepository.findOne({ where: { id: updateDto.proyectoId } });
+      if (!proyecto) throw new NotFoundException(`Proyecto con id ${updateDto.proyectoId} no encontrado`);
       distribucion.proyecto = proyecto;
     }
 
