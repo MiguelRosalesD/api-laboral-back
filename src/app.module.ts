@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { UsersModule } from './users/users.module';
@@ -9,6 +9,7 @@ import { ProyectosModule } from './proyectos/proyectos.module';
 import { DistribucionesModule } from './distribuciones/distribuciones.module';
 import { RegistrosModule } from './registros/registros.module';
 import { ImportModule } from './import/import.module';
+import { CreateUploadsFolderMiddleware } from './common/middleware/create-uploads-folder.middleware';
 
 @Module({
   imports: [
@@ -39,4 +40,8 @@ import { ImportModule } from './import/import.module';
   controllers: [],
   providers: [],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(CreateUploadsFolderMiddleware).forRoutes('*');
+  }
+}
