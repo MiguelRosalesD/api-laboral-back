@@ -10,5 +10,6 @@ import { Proyecto } from '../proyectos/entities/proyecto.entity';
   imports: [TypeOrmModule.forFeature([Distribucion, Perfil, Proyecto])],
   controllers: [DistribucionesController],
   providers: [DistribucionesService],
+  exports: [DistribucionesService],
 })
 export class DistribucionesModule {}

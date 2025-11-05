@@ -4,11 +4,11 @@ import { Min, Max } from 'class-validator';
 export class CreateDistribucionDto {
   @IsInt()
   @IsNotEmpty()
-  perfilId: number;  // Changed from id_perfil
+  perfilId: number;
 
   @IsInt()
   @IsNotEmpty()
-  proyectoId: number;  // Changed from id_proyecto
+  proyectoId: number;
 
   @IsDateString()
   @IsNotEmpty()
