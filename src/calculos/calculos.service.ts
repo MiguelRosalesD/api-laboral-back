@@ -1,19 +1,20 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { Registro } from '../registros/entities/registro.entity';
-import { Distribucion } from '../distribuciones/entities/distribucion.entity';
+import { DistribucionesService } from '../distribuciones/services/distribuciones.service';
 import { Perfil } from '../perfiles/entities/perfil.entity';
 import { ResultadoConsulta, ResultadoPerfil, ResultadoProyectoMes } from './types/calculos.types';
 
 @Injectable()
 export class CalculosService {
+  constructor(private readonly distribucionesService: DistribucionesService) {}
+
   /**
-   * Calcula la distribución por perfil -> proyecto -> mes, prorrateando por días del registro
-   * y calculando horas no asignadas correctamente.
+   * Calcula el desglose de las nóminas por perfil -> proyecto -> mes
+   * prorrateando por días de registro y considerando horas no asignadas.
    */
-  calcularDistribucion(
+  async calcularDistribucion(
     perfiles: Perfil[],
     registros: Registro[],
-    distribuciones: Distribucion[],
     fechaConsulta: { inicio: Date; fin: Date },
     tipoDato: 'real' | 'estimacion' | 'mixta',
     filtros?: {
@@ -21,45 +22,34 @@ export class CalculosService {
       proyectos?: string[];
       empresas?: string[];
       contratacion?: ('antiguo' | 'nuevo')[];
-      /** Nuevo filtro opcional para devolver solo perfiles con disponibilidad */
       soloDisponibles?: boolean;
     },
-  ): ResultadoConsulta {
+  ): Promise<ResultadoConsulta> {
     if (!fechaConsulta || !fechaConsulta.inicio || !fechaConsulta.fin) {
       throw new BadRequestException('Rango de fechas obligatorio');
     }
 
-    // Normalizar fechas de consulta
     const consultaInicio = new Date(fechaConsulta.inicio);
     const consultaFin = new Date(fechaConsulta.fin);
 
     const resultadosPerfiles: ResultadoPerfil[] = [];
 
     for (const perfil of perfiles) {
-      // Filtro opcional por nombre de perfil (si se especificó)
       if (filtros?.perfiles && !filtros.perfiles.includes(perfil.nombre)) continue;
 
-      // Filtrar registros del perfil
-      let registrosPerfil = registros.filter((r) => {
-        const rPerfilId =
-          (r as any).perfil?.id ?? (r as any).perfilId ?? (r as any).perfil_id ?? null;
-        return rPerfilId === perfil.id;
-      });
+      let registrosPerfil = registros.filter(
+        (r) => (r as any).perfil?.id === perfil.id || (r as any).perfilId === perfil.id,
+      );
 
-      // Filtrar por solapamiento con la consulta
       registrosPerfil = registrosPerfil.filter((r) =>
         this.rangoSolapado(new Date(r.fechaInicio), new Date(r.fechaFin), consultaInicio, consultaFin),
       );
 
-      // Filtrar por tipo de dato
-      if (tipoDato === 'real') {
-        registrosPerfil = registrosPerfil.filter((r) => r.tipoDato === 'real');
-      } else if (tipoDato === 'estimacion') {
-        registrosPerfil = registrosPerfil.filter((r) => r.tipoDato === 'estimacion');
-      } else if (tipoDato === 'mixta') {
-        const mesesConReales = new Set<string>(
-          registrosPerfil
-            .filter((r) => r.tipoDato === 'real')
+      if (tipoDato === 'real') registrosPerfil = registrosPerfil.filter((r) => r.tipoDato === 'real');
+      else if (tipoDato === 'estimacion') registrosPerfil = registrosPerfil.filter((r) => r.tipoDato === 'estimacion');
+      else if (tipoDato === 'mixta') {
+        const mesesConReales = new Set(
+          registrosPerfil.filter((r) => r.tipoDato === 'real')
             .map((r) => new Date(r.fechaInicio).toISOString().slice(0, 7)),
         );
         registrosPerfil = registrosPerfil.filter((r) => {
@@ -68,7 +58,6 @@ export class CalculosService {
         });
       }
 
-      // Mapa acumulador por proyecto y mes
       const proyectosMesMap: Record<string, ResultadoProyectoMes> = {};
       let totalDevengadoPerfil = 0;
       let totalAportacionPerfil = 0;
@@ -86,21 +75,13 @@ export class CalculosService {
         const diasRegistro = this.diasEntre(rInicio, rFin);
         if (diasRegistro <= 0) continue;
 
-        // Distribuciones activas del perfil que solapan
-        const distribucionesActivas = distribuciones.filter((d) => {
-          const dPerfilId =
-            (d as any).perfil?.id ?? (d as any).perfilId ?? (d as any).perfil_id ?? null;
-          if (dPerfilId !== perfil.id) return false;
+        const distribucionesActivas = await this.distribucionesService.getDistribucionesPorPerfil(
+          perfil.id,
+          rInicio,
+          rFin,
+          filtros,
+        );
 
-          const proyectoNombre = (d as any).proyecto?.nombre ?? null;
-          if (filtros?.proyectos && proyectoNombre && !filtros.proyectos.includes(proyectoNombre)) return false;
-          if (filtros?.contratacion && !filtros.contratacion.includes(d.estado)) return false;
-          if (filtros?.empresas && registro.empresa && !filtros.empresas.includes(registro.empresa)) return false;
-
-          return this.rangoSolapado(new Date(d.fechaInicio), new Date(d.fechaFin), rInicio, rFin);
-        });
-
-        // Recorremos mes a mes dentro del rango
         let actual = new Date(rInicio);
         while (actual <= rFin) {
           const inicioMes = new Date(actual.getFullYear(), actual.getMonth(), 1);
@@ -167,12 +148,10 @@ export class CalculosService {
             totalHorasPerfil += horasAdd;
           }
 
-          // Horas no asignadas
           const diasNoAsignadosEquivalente = Math.max(0, diasMes - sumaDiasPorcentaje);
           if (diasNoAsignadosEquivalente > 0) {
             const factorNoAsignadoSobreRegistro = diasNoAsignadosEquivalente / diasRegistro;
-            const horasNoAsignadasSegmento = Number((registro.horas * factorNoAsignadoSobreRegistro).toFixed(2));
-            horasNoAsignadasPerfil += horasNoAsignadasSegmento;
+            horasNoAsignadasPerfil += Number((registro.horas * factorNoAsignadoSobreRegistro).toFixed(2));
           }
 
           actual.setMonth(actual.getMonth() + 1);
@@ -189,13 +168,11 @@ export class CalculosService {
       });
     }
 
-    // Filtro adicional: mostrar solo perfiles con disponibilidad
     let perfilesFiltrados = resultadosPerfiles;
     if (filtros?.soloDisponibles) {
       perfilesFiltrados = resultadosPerfiles.filter((p) => p.horasNoAsignadas > 0);
     }
 
-    // Totales globales recalculados
     const totalGlobal = perfilesFiltrados.reduce(
       (acc, p) => {
         acc.devengado += p.totalDevengado;
@@ -207,21 +184,52 @@ export class CalculosService {
       { devengado: 0, aportacion: 0, horas: 0, horasNoAsignadas: 0 },
     );
 
-    totalGlobal.devengado = Number(totalGlobal.devengado.toFixed(2));
-    totalGlobal.aportacion = Number(totalGlobal.aportacion.toFixed(2));
-    totalGlobal.horas = Number(totalGlobal.horas.toFixed(2));
-    totalGlobal.horasNoAsignadas = Number(totalGlobal.horasNoAsignadas.toFixed(2));
-
     return { perfiles: perfilesFiltrados, totalGlobal };
   }
 
+  /**
+   * Porcentaje libre de un perfil en un rango de fechas.
+   */
+  async getPorcentajeLibre(perfilId: number, inicio: Date, fin: Date) {
+    if (!perfilId || isNaN(inicio.getTime()) || isNaN(fin.getTime())) {
+      throw new BadRequestException('Parámetros inválidos');
+    }
+
+    // Distribuciones del perfil en el rango
+    const distribuciones = await this.distribucionesService.findDistribucionesPorPerfil(
+      perfilId,
+      inicio,
+      fin,
+    );
+
+    // Calcular porcentaje ocupado por día
+    let diasTotales = 0;
+    let diasOcupados = 0;
+
+    for (const dist of distribuciones) {
+      const distInicio = new Date(dist.fechaInicio);
+      const distFin = new Date(dist.fechaFin);
+
+      const solapInicio = new Date(Math.max(distInicio.getTime(), inicio.getTime()));
+      const solapFin = new Date(Math.min(distFin.getTime(), fin.getTime()));
+
+      const diasSolapados = this.diasEntre(solapInicio, solapFin);
+      if (diasSolapados > 0) {
+        diasTotales += diasSolapados;
+        diasOcupados += diasSolapados * ((dist.porcentaje ?? 0) / 100);
+      }
+    }
+
+    const porcentajeLibre = diasTotales > 0 ? Math.max(0, 100 - (diasOcupados / diasTotales) * 100) : 100;
+
+    return { perfilId, porcentajeLibre: Number(porcentajeLibre.toFixed(2)) };
+  }
+
+  // ============================
   // Helpers
+  // ============================
   private rangoSolapado(inicioA: Date, finA: Date, inicioB: Date, finB: Date): boolean {
-    const aInicio = new Date(inicioA);
-    const aFin = new Date(finA);
-    const bInicio = new Date(inicioB);
-    const bFin = new Date(finB);
-    return aInicio <= bFin && aFin >= bInicio;
+    return inicioA <= finB && finA >= inicioB;
   }
 
   private diasEntre(inicio: Date, fin: Date): number {

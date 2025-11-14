@@ -14,6 +14,5 @@ import { DistribucionesModule } from '../distribuciones/distribuciones.module';
   ],
   providers: [CalculosService],
   controllers: [CalculosController],
-  exports: [CalculosService],
 })
 export class CalculosModule {}
