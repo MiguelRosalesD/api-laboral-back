@@ -1,14 +1,18 @@
-// api-laboral-back/src/users/users.module.ts
+// src/users/users.module.ts
 
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { User } from './entities/user.entity';
 import { UsersService } from './services/users.service';
-import { User } from './entities/user.entity'; //
+// Importa Controllers, si los tienes
 
 @Module({
-  // Necesitas la Entidad aquí para que TypeORM sepa que existe
-  imports: [TypeOrmModule.forFeature([User])], 
+  imports: [
+    // Asegúrate de importar la entidad User
+    TypeOrmModule.forFeature([User]),
+  ],
   providers: [UsersService],
-  exports: [UsersService],
+  // Exportamos UsersService para que AuthService pueda usarlo
+  exports: [UsersService, TypeOrmModule.forFeature([User])],
 })
 export class UsersModule {}

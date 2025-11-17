@@ -1,6 +1,7 @@
-// api-laboral-back/src/users/entities/user.entity.ts
+// src/users/entities/user.entity.ts
 
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, Unique } from 'typeorm';
+import { UserRole } from '../../common/enums/user-role.enum'; // Importar el Enum
 
 @Entity('users') 
 export class User {
@@ -16,6 +17,7 @@ export class User {
   @Column()
   nombre: string;
 
-  @Column({ default: 'user' })
-  role: string; 
+  // CLAVE: El tipo de columna es STRING en la BD, pero usamos el Enum para tipado
+  @Column({ type: 'enum', enum: UserRole, default: UserRole.EMPLOYEE }) 
+  role: UserRole; 
 }

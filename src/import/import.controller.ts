@@ -1,8 +1,11 @@
+// src/import/controllers/import.controller.ts
+
 import {
   Controller,
   Post,
   UploadedFile,
   UseInterceptors,
+  UseGuards, // Importación de NestJS para usar Guardias
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ImportService } from './import.service';
@@ -10,12 +13,21 @@ import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { ApiConsumes, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+// Importaciones de Seguridad
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guards';
+import { Roles } from '../common/decorators/roles.decorator';
+import { UserRole } from '../common/enums/user-role.enum';
+
+
 @ApiTags('import')
 @Controller('import')
+@UseGuards(JwtAuthGuard, RolesGuard) // Aplicamos las guardias a nivel de controlador/método
 export class ImportController {
   constructor(private readonly importService: ImportService) {}
 
   @Post('excel')
+  @Roles(UserRole.ADMIN) // <--- RESTRINGIDO: Solo ADMIN puede importar Excel
   @ApiOperation({ summary: 'Subir archivo Excel para procesar registros' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -49,6 +61,7 @@ export class ImportController {
   )
   async uploadExcel(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
+      // Nota: NestJS/Multer ya manejaría esto, pero es una buena comprobación.
       throw new Error('No se ha subido ningún archivo');
     }
 

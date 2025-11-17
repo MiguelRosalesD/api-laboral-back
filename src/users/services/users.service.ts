@@ -1,8 +1,11 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+// src/users/services/users.service.ts
+import { Injectable, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from '../entities/user.entity';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcrypt'; 
+import { User } from '../entities/user.entity'; 
+import { registerDto } from '../../auth/dto/auth.dto'; 
+import { UserRole } from 'src/common/enums/user-role.enum';
 
 @Injectable()
 export class UsersService {
@@ -11,36 +14,47 @@ export class UsersService {
     private usersRepository: Repository<User>,
   ) {}
 
-  // Buscar usuario por email
-  async findOneByEmail(email: string): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { email } });
-  }
+  // 2.1: CREAR USUARIO (REGISTRO SEGURO)
+  async create(registerDto: registerDto): Promise<User> {
+    const { password, email, name, role } = registerDto;
 
-  // Método para crear un nuevo usuario. Maneja la validación de duplicados y el hashing de la contraseña.
-   
-  async create(userData: Partial<User>): Promise<User> {
-    
-    if (!userData.email || !userData.password) {
-        throw new BadRequestException('Email y contraseña son requeridos.');
-    }
+    // Generar Salt y Hash la contraseña
+    const salt = await bcrypt.genSalt();
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-    const existingUser = await this.findOneByEmail(userData.email);
-    if (existingUser) {
-        throw new BadRequestException('El email ya está registrado');
-    }
-
-    // Hashing de la contraseña
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(userData.password, salt);
-
-    // Creación de la instancia
+    // Crear la entidad con el hash
     const newUser = this.usersRepository.create({
-        ...userData,
-        password: hashedPassword,
-        role: 'user',
+      email,
+      nombre: name,
+      password: hashedPassword,
+      role: role || UserRole.EMPLOYEE,
     });
 
-    // Guardar en la base de datos
-    return this.usersRepository.save(newUser);
+    try {
+      // Guardar en la Base de Datos
+      await this.usersRepository.save(newUser);
+      
+      // Devolver el usuario limpio (sin password)
+      const { password: _, ...result } = newUser;
+      return result as User;
+    } catch (error) {
+      // Manejo de error: email duplicado
+      if (error.code === '23505' || error.detail?.includes('already exists')) { 
+        throw new ConflictException('El correo electrónico ya está registrado.');
+      }
+      throw new InternalServerErrorException('Error desconocido al registrar.');
+    }
+  }
+
+  // 2.2: BUSCAR USUARIO POR EMAIL (PARA LOGIN)
+  async findOneByEmail(email: string): Promise<User | undefined> {
+    
+    // Busca el usuario (TypeORM retorna User | null)
+    const user = await this.usersRepository.findOne({ 
+      where: { email },
+    });
+    
+    // Corrige el error de tipado: convierte 'null' a 'undefined' si no se encuentra.
+    return user ?? undefined;
   }
 }
