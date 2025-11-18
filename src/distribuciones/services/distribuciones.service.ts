@@ -13,7 +13,14 @@ export class DistribucionesService {
   ) {}
 
   create(dto: CreateDistribucionDto) {
-    const dist = this.distribucionRepo.create(dto);
+    const dist = this.distribucionRepo.create({
+      perfil: { id: dto.perfilId } as any,
+      proyecto: { id: dto.proyectoId } as any,
+      fechaInicio: dto.fechaInicio,
+      fechaFin: dto.fechaFin,
+      porcentaje: dto.porcentaje,
+      estado: dto.estado,
+    });
     return this.distribucionRepo.save(dist);
   }
 

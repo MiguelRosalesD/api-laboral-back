@@ -15,7 +15,7 @@ export class ImportService {
     private readonly registroRepo: Repository<Registro>,
   ) {}
 
-  async processExcel(filePath: string) {
+  async processExcel(filePath: string, fechaInicio: string, fechaFin: string) {
     try {
       const workbook = XLSX.readFile(filePath);
 
@@ -46,18 +46,18 @@ export class ImportService {
             perfil = await this.perfilRepo.save(perfil);
           }
 
-          //  Crear registro asociado
+          //  Crear registro asociado con valores por defecto y fechas del frontend
           const registroData: Partial<Registro> = {
             perfil,
             tipoDato: 'real',
             devengado,
             aportacion,
             horas: 1800,
-            fechaInicio: new Date(),
-            fechaFin: new Date(),
+            fechaInicio: new Date(fechaInicio),
+            fechaFin: new Date(fechaFin),
             empresa: 'DLTCode',
-            multiplicadorInferior: 0.34,
-            multiplicadorSuperior: 0.32,
+            multiplicadorInferior: 0.32,
+            multiplicadorSuperior: 0.34,
           };
 
           const registro = this.registroRepo.create(registroData);
