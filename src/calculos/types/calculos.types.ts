@@ -1,9 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class ResultadoProyectoMes {
-  @ApiProperty({ example: '2025-10', description: 'Mes del resultado (YYYY-MM)' })
-  mes: string;
-
+export class ResultadoProyecto {
   @ApiProperty({ example: 'Proyecto A', description: 'Nombre del proyecto' })
   proyecto: string;
 
@@ -23,12 +20,29 @@ export class ResultadoProyectoMes {
   tipoContratacion: string;
 }
 
+export class ResultadoMes {
+  @ApiProperty({ example: '2025-10', description: 'Mes del resultado (YYYY-MM)' })
+  mes: string;
+
+  @ApiProperty({ type: [ResultadoProyecto], description: 'Lista de proyectos en este mes' })
+  proyectos: ResultadoProyecto[];
+
+  @ApiProperty({ example: 1500.75, description: 'Total devengado en el mes' })
+  totalDevengado: number;
+
+  @ApiProperty({ example: 375.25, description: 'Total aportación en el mes' })
+  totalAportacion: number;
+
+  @ApiProperty({ example: 240, description: 'Total horas en el mes' })
+  totalHoras: number;
+}
+
 export class ResultadoPerfil {
   @ApiProperty({ example: 'Juan Pérez', description: 'Nombre del perfil' })
   perfil: string;
 
-  @ApiProperty({ type: [ResultadoProyectoMes], description: 'Lista de resultados por proyecto y mes' })
-  proyectos: ResultadoProyectoMes[];
+  @ApiProperty({ type: [ResultadoMes], description: 'Lista de resultados por mes' })
+  meses: ResultadoMes[];
 
   @ApiProperty({ example: 2500.75, description: 'Total devengado del perfil' })
   totalDevengado: number;
@@ -38,9 +52,6 @@ export class ResultadoPerfil {
 
   @ApiProperty({ example: 320, description: 'Total horas del perfil' })
   totalHoras: number;
-
-  @ApiProperty({ example: 0, description: 'Horas sin asignar' })
-  horasNoAsignadas: number;
 }
 
 export class ResultadoConsulta {
@@ -52,8 +63,7 @@ export class ResultadoConsulta {
     properties: {
       devengado: { type: 'number', example: 5000.50 },
       aportacion: { type: 'number', example: 1250.75 },
-      horas: { type: 'number', example: 640 },
-      horasNoAsignadas: { type: 'number', example: 0 }
+      horas: { type: 'number', example: 640 }
     },
     description: 'Totales globales de la consulta'
   })
@@ -61,6 +71,16 @@ export class ResultadoConsulta {
     devengado: number;
     aportacion: number;
     horas: number;
-    horasNoAsignadas: number;
   };
+}
+
+export class ResultadoPorcentajeLibre {
+  @ApiProperty({ example: 1, description: 'ID del perfil consultado' })
+  perfilId: number;
+
+  @ApiProperty({ example: 25.5, description: 'Porcentaje mínimo libre en el rango de fechas' })
+  porcentajeMinimoLibre: number;
+
+  @ApiProperty({ example: 120.5, description: 'Total de horas sin asignar en el rango de fechas' })
+  horasSinAsignar: number;
 }

@@ -19,7 +19,7 @@ export class CalculosController {
   ) {}
 
   @Get('desglose')
-  @ApiOperation({ summary: 'Desglose de nóminas por perfil -> proyecto -> mes' })
+  @ApiOperation({ summary: 'Desglose de nóminas por perfil -> mes -> proyecto' })
   @ApiResponse({ status: 200, description: 'Distribución calculada correctamente' })
   @ApiResponse({ status: 400, description: 'Parámetros inválidos' })
   async getDesglose(@Query() query: CalculosQueryDto) {
@@ -31,40 +31,51 @@ export class CalculosController {
       throw new BadRequestException('Rango de fechas inválido');
     }
 
+    // Convertir IDs de strings a números
+    const perfilIds = perfiles ? perfiles.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : undefined;
+    const proyectoIds = proyectos ? proyectos.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : undefined;
+
     const allowedContratacion = ['antiguo', 'nuevo'] as const;
     const filtros = {
-      perfiles: perfiles ? perfiles.split(',') : undefined,
-      proyectos: proyectos ? proyectos.split(',') : undefined,
-      empresas: empresas ? empresas.split(',') : undefined,
+      perfilIds,
+      proyectoIds,
+      empresas: empresas ? empresas.split(',').map(e => e.trim()) : undefined,
       contratacion: contratacion
         ? contratacion
             .split(',')
+            .map(c => c.trim())
             .filter((c): c is "antiguo" | "nuevo" => allowedContratacion.includes(c as any))
         : undefined,
     };
 
-    // Obtener perfiles filtrados por nombre si se indica, si no todos
-    const perfilesArr = filtros.perfiles
-      ? await this.perfilRepository.find({ where: { nombre: In(filtros.perfiles) } })
-      : await this.perfilRepository.find();
+    // Obtener perfiles filtrados por ID si se indica, si no todos
+    const wherePerfiles = perfilIds ? { id: In(perfilIds) } : {};
+    const perfilesArr = await this.perfilRepository.find({ where: wherePerfiles });
 
-    // Obtener registros filtrados por los perfiles seleccionados
-    const registrosArr = await this.registroRepository.find({
-      where: { perfil: In(perfilesArr.map(p => p.id)) }
-    });
+    if (perfilIds && perfilesArr.length === 0) {
+      throw new BadRequestException('No se encontraron perfiles con los IDs proporcionados');
+    }
+
+    // Obtener registros filtrados por los perfiles seleccionados y opcionalmente por empresa
+    const whereRegistros: any = { perfil: In(perfilesArr.map(p => p.id)) };
+    if (filtros.empresas && filtros.empresas.length > 0) {
+      whereRegistros.empresa = In(filtros.empresas);
+    }
+
+    const registrosArr = await this.registroRepository.find({ where: whereRegistros });
 
     return this.calculosService.calcularDistribucion(
       perfilesArr,
       registrosArr,
       { inicio, fin },
-      tipoDato as "real" | "estimacion" | "mixta",
+      tipoDato,
       filtros
     );
   }
 
   @Get('porcentaje-libre')
-  @ApiOperation({ summary: 'Porcentaje libre de un perfil en un rango de fechas' })
-  @ApiResponse({ status: 200, description: 'Porcentaje libre calculado' })
+  @ApiOperation({ summary: 'Porcentaje libre y horas sin asignar de un perfil en un rango de fechas' })
+  @ApiResponse({ status: 200, description: 'Porcentaje libre y horas calculadas' })
   @ApiResponse({ status: 400, description: 'Parámetros inválidos' })
   async getPorcentajeLibre(@Query() query: CalculosQueryDto) {
     const { fechaInicio, fechaFin, perfiles } = query;
@@ -75,15 +86,19 @@ export class CalculosController {
       throw new BadRequestException('Rango de fechas inválido');
     }
 
-    // Buscar el primer perfil por nombre y obtener su ID
-    const perfilNombre = perfiles ? perfiles.split(',')[0] : undefined;
-    if (!perfilNombre) throw new BadRequestException('Debes indicar al menos un perfil');
+    // Obtener el primer ID de perfil
+    const perfilId = perfiles ? parseInt(perfiles.split(',')[0].trim()) : undefined;
+    if (!perfilId || isNaN(perfilId)) {
+      throw new BadRequestException('Debes indicar al menos un ID de perfil válido');
+    }
 
-    const perfil = await this.perfilRepository.findOne({ where: { nombre: perfilNombre } });
-    if (!perfil) throw new BadRequestException('Perfil no encontrado');
+    const perfil = await this.perfilRepository.findOne({ where: { id: perfilId } });
+    if (!perfil) {
+      throw new BadRequestException('Perfil no encontrado');
+    }
 
     return this.calculosService.getPorcentajeLibre(
-      perfil.id,
+      perfilId,
       inicio,
       fin
     );
