@@ -1,4 +1,4 @@
-import { IsDateString, IsNotEmpty } from 'class-validator';
+import { IsDateString, IsNotEmpty, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ImportExcelDto {
@@ -11,4 +11,9 @@ export class ImportExcelDto {
   @IsDateString()
   @IsNotEmpty()
   fechaFin: string;
+
+  @ApiProperty({ description: 'Nombre de la empresa para todos los registros', example: 'DLTCode' })
+  @IsString()
+  @IsNotEmpty()
+  empresa: string;
 }

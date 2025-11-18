@@ -50,6 +50,10 @@ export class ImportController {
           format: 'date',
           example: '2025-12-31',
         },
+        empresa: {
+          type: 'string',
+          example: 'DLTCode',
+        },
       },
     },
   })
@@ -84,6 +88,7 @@ export class ImportController {
       file.path,
       importExcelDto.fechaInicio,
       importExcelDto.fechaFin,
+      importExcelDto.empresa,
     );
 
     return {

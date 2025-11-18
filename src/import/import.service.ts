@@ -15,7 +15,7 @@ export class ImportService {
     private readonly registroRepo: Repository<Registro>,
   ) {}
 
-  async processExcel(filePath: string, fechaInicio: string, fechaFin: string) {
+  async processExcel(filePath: string, fechaInicio: string, fechaFin: string, empresa: string) {
     try {
       const workbook = XLSX.readFile(filePath);
 
@@ -55,7 +55,7 @@ export class ImportService {
             horas: 1800,
             fechaInicio: new Date(fechaInicio),
             fechaFin: new Date(fechaFin),
-            empresa: 'DLTCode',
+            empresa,
             multiplicadorInferior: 0.32,
             multiplicadorSuperior: 0.34,
           };
