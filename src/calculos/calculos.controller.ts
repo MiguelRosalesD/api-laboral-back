@@ -97,10 +97,16 @@ export class CalculosController {
       throw new BadRequestException('Perfil no encontrado');
     }
 
+    // Obtener registros del perfil
+    const registrosArr = await this.registroRepository.find({ 
+      where: { perfil: { id: perfilId } } 
+    });
+
     return this.calculosService.getPorcentajeLibre(
       perfilId,
       inicio,
-      fin
+      fin,
+      registrosArr
     );
   }
 }

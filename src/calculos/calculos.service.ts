@@ -10,7 +10,7 @@ export class CalculosService {
 
   /**
    * Calcula el desglose de las nóminas por perfil -> mes -> proyecto
-   * prorrateando por días de registro.
+   * calculando día a día y prorrateando horas/devengado/aportación según los días del registro.
    */
   async calcularDistribucion(
     perfiles: Perfil[],
@@ -44,156 +44,131 @@ export class CalculosService {
         this.rangoSolapado(new Date(r.fechaInicio), new Date(r.fechaFin), consultaInicio, consultaFin),
       );
 
-      // Filtrar por tipo de dato
-      if (tipoDato === 'real') {
-        registrosPerfil = registrosPerfil.filter((r) => r.tipoDato === 'real');
-      } else if (tipoDato === 'estimacion') {
-        registrosPerfil = registrosPerfil.filter((r) => r.tipoDato === 'estimacion');
-      } else if (tipoDato === 'mixta') {
-        const mesesConReales = new Set(
-          registrosPerfil.filter((r) => r.tipoDato === 'real')
-            .map((r) => new Date(r.fechaInicio).toISOString().slice(0, 7)),
-        );
-        registrosPerfil = registrosPerfil.filter((r) => {
-          const mes = new Date(r.fechaInicio).toISOString().slice(0, 7);
-          return r.tipoDato === 'real' || !mesesConReales.has(mes);
-        });
-      }
+      // Identificar meses con registros reales para modo mixta
+      const mesesConReales = new Set(
+        registrosPerfil.filter((r) => r.tipoDato === 'real')
+          .map((r) => {
+            const d = new Date(r.fechaInicio);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          }),
+      );
+
+      // Obtener distribuciones para el perfil en el rango completo
+      const todasDistribuciones = await this.distribucionesService.getDistribucionesPorPerfil(
+        perfil.id,
+        consultaInicio,
+        consultaFin,
+      );
+
+      // Filtrar distribuciones por proyectos y contratación
+      const distribucionesFiltradas = todasDistribuciones.filter((dist) => {
+        const proyectoId = (dist as any).proyecto?.id;
+        const estadoContratacion = dist.estado;
+
+        if (filtros?.proyectoIds && proyectoId && !filtros.proyectoIds.includes(proyectoId)) {
+          return false;
+        }
+
+        if (filtros?.contratacion && estadoContratacion && !filtros.contratacion.includes(estadoContratacion)) {
+          return false;
+        }
+
+        return true;
+      });
 
       // Estructura: Mes -> Proyecto
-      const mesesMap: Record<string, ResultadoMes> = {};
+      const mesesMap: Record<string, { proyectosMap: Record<string, ResultadoProyecto>, totalDevengado: number, totalAportacion: number, totalHoras: number }> = {};
+
       let totalDevengadoPerfil = 0;
       let totalAportacionPerfil = 0;
       let totalHorasPerfil = 0;
 
-      for (const registro of registrosPerfil) {
-        const registroInicio = new Date(registro.fechaInicio);
-        const registroFin = new Date(registro.fechaFin);
+      // Iterar día a día en el rango de consulta
+      for (let dia = new Date(consultaInicio); dia <= consultaFin; dia.setDate(dia.getDate() + 1)) {
+        const diaActual = new Date(dia);
+        const mesKey = `${diaActual.getFullYear()}-${String(diaActual.getMonth() + 1).padStart(2, '0')}`;
 
-        const rInicio = new Date(Math.max(registroInicio.getTime(), consultaInicio.getTime()));
-        const rFin = new Date(Math.min(registroFin.getTime(), consultaFin.getTime()));
-        if (rInicio > rFin) continue;
+        // Buscar el registro para este día (priorizando real sobre estimación)
+        const registroDelDia = this.buscarRegistroParaDia(diaActual, registrosPerfil, tipoDato, mesesConReales);
+        if (!registroDelDia) continue;
 
-        const diasRegistro = this.diasEntre(rInicio, rFin);
-        if (diasRegistro <= 0) continue;
+        // Calcular horas/devengado/aportación por día del registro
+        const diasDelRegistro = this.diasEntre(new Date(registroDelDia.fechaInicio), new Date(registroDelDia.fechaFin));
+        const horasPorDia = registroDelDia.horas / diasDelRegistro;
+        const devengadoPorDia = registroDelDia.devengado / diasDelRegistro;
+        const aportacionPorDia = registroDelDia.aportacion / diasDelRegistro;
 
-        // Obtener distribuciones activas para este perfil
-        const distribucionesActivas = await this.distribucionesService.getDistribucionesPorPerfil(
-          perfil.id,
-          rInicio,
-          rFin,
-        );
-
-        // Filtrar distribuciones por proyectos y contratación si se especifican
-        const distribucionesFiltradas = distribucionesActivas.filter((dist) => {
-          const proyectoId = (dist as any).proyecto?.id;
-          const estadoContratacion = dist.estado;
-
-          if (filtros?.proyectoIds && proyectoId && !filtros.proyectoIds.includes(proyectoId)) {
-            return false;
-          }
-
-          if (filtros?.contratacion && estadoContratacion && !filtros.contratacion.includes(estadoContratacion)) {
-            return false;
-          }
-
-          return true;
+        // Buscar distribuciones activas para este día
+        const distribucionesDelDia = distribucionesFiltradas.filter((dist) => {
+          const distInicio = new Date(dist.fechaInicio);
+          const distFin = new Date(dist.fechaFin);
+          return diaActual >= distInicio && diaActual <= distFin;
         });
 
-        // Procesar cada mes dentro del rango del registro
-        let actual = new Date(rInicio);
-        while (actual <= rFin) {
-          const inicioMes = new Date(actual.getFullYear(), actual.getMonth(), 1);
-          const finMes = new Date(actual.getFullYear(), actual.getMonth() + 1, 0);
+        // Inicializar mes si no existe
+        if (!mesesMap[mesKey]) {
+          mesesMap[mesKey] = {
+            proyectosMap: {},
+            totalDevengado: 0,
+            totalAportacion: 0,
+            totalHoras: 0,
+          };
+        }
 
-          const mesInicio = new Date(Math.max(rInicio.getTime(), inicioMes.getTime()));
-          const mesFin = new Date(Math.min(rFin.getTime(), finMes.getTime()));
-          if (mesInicio > mesFin) {
-            actual.setMonth(actual.getMonth() + 1);
-            continue;
-          }
+        // Distribuir horas/devengado/aportación según porcentajes de distribuciones
+        for (const dist of distribucionesDelDia) {
+          const porcentaje = (typeof dist.porcentaje === 'number' ? dist.porcentaje : Number(dist.porcentaje)) / 100;
+          const proyectoNombre = (dist as any).proyecto?.nombre ?? 'Sin proyecto';
 
-          const diasMes = this.diasEntre(mesInicio, mesFin);
-          if (diasMes <= 0) {
-            actual.setMonth(actual.getMonth() + 1);
-            continue;
-          }
-
-          const mesKey = mesInicio.toISOString().slice(0, 7);
-
-          // Inicializar mes si no existe
-          if (!mesesMap[mesKey]) {
-            mesesMap[mesKey] = {
-              mes: mesKey,
-              proyectos: [],
-              totalDevengado: 0,
-              totalAportacion: 0,
-              totalHoras: 0,
+          if (!mesesMap[mesKey].proyectosMap[proyectoNombre]) {
+            mesesMap[mesKey].proyectosMap[proyectoNombre] = {
+              proyecto: proyectoNombre,
+              devengado: 0,
+              aportacion: 0,
+              horas: 0,
+              empresa: registroDelDia.empresa ?? 'Sin empresa',
+              tipoContratacion: dist.estado ?? 'sin estado',
             };
           }
 
-          const proyectosMap: Record<string, ResultadoProyecto> = {};
+          const horasAsignadas = horasPorDia * porcentaje;
+          const devengadoAsignado = devengadoPorDia * porcentaje;
+          const aportacionAsignada = aportacionPorDia * porcentaje;
 
-          // Procesar cada distribución que solapa con este mes
-          for (const dist of distribucionesFiltradas) {
-            const distInicio = new Date(dist.fechaInicio);
-            const distFin = new Date(dist.fechaFin);
+          mesesMap[mesKey].proyectosMap[proyectoNombre].horas += horasAsignadas;
+          mesesMap[mesKey].proyectosMap[proyectoNombre].devengado += devengadoAsignado;
+          mesesMap[mesKey].proyectosMap[proyectoNombre].aportacion += aportacionAsignada;
 
-            const solapInicio = new Date(Math.max(mesInicio.getTime(), distInicio.getTime()));
-            const solapFin = new Date(Math.min(mesFin.getTime(), distFin.getTime()));
+          mesesMap[mesKey].totalHoras += horasAsignadas;
+          mesesMap[mesKey].totalDevengado += devengadoAsignado;
+          mesesMap[mesKey].totalAportacion += aportacionAsignada;
 
-            const diasSolapados = this.diasEntre(solapInicio, solapFin);
-            if (diasSolapados <= 0) continue;
-
-            const porcentaje = typeof dist.porcentaje === 'number'
-              ? dist.porcentaje / 100
-              : Number(dist.porcentaje) / 100;
-
-            const factorSobreRegistro = diasSolapados / diasRegistro;
-
-            const proyectoNombre = (dist as any).proyecto?.nombre ?? 'Sin proyecto';
-
-            if (!proyectosMap[proyectoNombre]) {
-              proyectosMap[proyectoNombre] = {
-                proyecto: proyectoNombre,
-                devengado: 0,
-                aportacion: 0,
-                horas: 0,
-                empresa: registro.empresa ?? 'Sin empresa',
-                tipoContratacion: dist.estado ?? 'sin estado',
-              };
-            }
-
-            const devengadoAdd = Number((registro.devengado * factorSobreRegistro * porcentaje).toFixed(2));
-            const aportacionAdd = Number((registro.aportacion * factorSobreRegistro * porcentaje).toFixed(2));
-            const horasAdd = Number((registro.horas * factorSobreRegistro * porcentaje).toFixed(2));
-
-            proyectosMap[proyectoNombre].devengado += devengadoAdd;
-            proyectosMap[proyectoNombre].aportacion += aportacionAdd;
-            proyectosMap[proyectoNombre].horas += horasAdd;
-          }
-
-          // Agregar proyectos al mes y actualizar totales del mes
-          const proyectosArray = Object.values(proyectosMap);
-          mesesMap[mesKey].proyectos.push(...proyectosArray);
-
-          for (const proyecto of proyectosArray) {
-            mesesMap[mesKey].totalDevengado += proyecto.devengado;
-            mesesMap[mesKey].totalAportacion += proyecto.aportacion;
-            mesesMap[mesKey].totalHoras += proyecto.horas;
-
-            totalDevengadoPerfil += proyecto.devengado;
-            totalAportacionPerfil += proyecto.aportacion;
-            totalHorasPerfil += proyecto.horas;
-          }
-
-          actual.setMonth(actual.getMonth() + 1);
+          totalHorasPerfil += horasAsignadas;
+          totalDevengadoPerfil += devengadoAsignado;
+          totalAportacionPerfil += aportacionAsignada;
         }
       }
 
+      // Convertir a estructura final
+      const mesesResult: ResultadoMes[] = Object.keys(mesesMap).map((mesKey) => {
+        const mesData = mesesMap[mesKey];
+        return {
+          mes: mesKey,
+          proyectos: Object.values(mesData.proyectosMap).map((p) => ({
+            ...p,
+            horas: Number(p.horas.toFixed(2)),
+            devengado: Number(p.devengado.toFixed(2)),
+            aportacion: Number(p.aportacion.toFixed(2)),
+          })),
+          totalDevengado: Number(mesData.totalDevengado.toFixed(2)),
+          totalAportacion: Number(mesData.totalAportacion.toFixed(2)),
+          totalHoras: Number(mesData.totalHoras.toFixed(2)),
+        };
+      });
+
       resultadosPerfiles.push({
         perfil: perfil.nombre,
-        meses: Object.values(mesesMap),
+        meses: mesesResult,
         totalDevengado: Number(totalDevengadoPerfil.toFixed(2)),
         totalAportacion: Number(totalAportacionPerfil.toFixed(2)),
         totalHoras: Number(totalHorasPerfil.toFixed(2)),
@@ -215,10 +190,9 @@ export class CalculosService {
 
   /**
    * Porcentaje mínimo libre y horas sin asignar de un perfil en un rango de fechas.
-   * Calcula día a día el porcentaje ocupado y retorna el mínimo porcentaje libre encontrado,
-   * además de las horas totales sin asignar en todo el rango.
+   * Calcula día a día usando registros reales y priorizando sobre estimaciones.
    */
-  async getPorcentajeLibre(perfilId: number, inicio: Date, fin: Date): Promise<ResultadoPorcentajeLibre> {
+  async getPorcentajeLibre(perfilId: number, inicio: Date, fin: Date, registros: Registro[]): Promise<ResultadoPorcentajeLibre> {
     if (!perfilId || isNaN(inicio.getTime()) || isNaN(fin.getTime())) {
       throw new BadRequestException('Parámetros inválidos');
     }
@@ -230,24 +204,42 @@ export class CalculosService {
       fin,
     );
 
-    // Obtener todos los registros del perfil que solapen con el rango
-    // Nota: Esto requeriría acceso al repositorio de registros, pero por simplicidad
-    // asumiremos que las horas se calculan basadas en un estándar (ej: 160 horas/mes)
-    const diasTotales = this.diasEntre(inicio, fin);
+    // Filtrar registros que solapen con el rango
+    const registrosPerfil = registros.filter((r) =>
+      this.rangoSolapado(new Date(r.fechaInicio), new Date(r.fechaFin), inicio, fin),
+    );
+
+    // Identificar meses con registros reales para priorizar
+    const mesesConReales = new Set(
+      registrosPerfil.filter((r) => r.tipoDato === 'real')
+        .map((r) => {
+          const d = new Date(r.fechaInicio);
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        }),
+    );
     
     let porcentajeMinimoLibre = 100;
     let horasTotalesSinAsignar = 0;
 
-    // Calcular porcentaje ocupado por cada día
+    // Calcular día a día
     for (let dia = new Date(inicio); dia <= fin; dia.setDate(dia.getDate() + 1)) {
-      let porcentajeOcupadoDelDia = 0;
+      const diaActual = new Date(dia);
 
+      // Buscar el registro para este día (priorizando real sobre estimación)
+      const registroDelDia = this.buscarRegistroParaDia(diaActual, registrosPerfil, 'mixta', mesesConReales);
+      if (!registroDelDia) continue;
+
+      // Calcular horas por día del registro
+      const diasDelRegistro = this.diasEntre(new Date(registroDelDia.fechaInicio), new Date(registroDelDia.fechaFin));
+      const horasPorDia = registroDelDia.horas / diasDelRegistro;
+
+      // Calcular porcentaje ocupado del día
+      let porcentajeOcupadoDelDia = 0;
       for (const dist of distribuciones) {
         const distInicio = new Date(dist.fechaInicio);
         const distFin = new Date(dist.fechaFin);
 
-        // Verificar si el día está dentro del rango de la distribución
-        if (dia >= distInicio && dia <= distFin) {
+        if (diaActual >= distInicio && diaActual <= distFin) {
           porcentajeOcupadoDelDia += (dist.porcentaje ?? 0);
         }
       }
@@ -259,8 +251,7 @@ export class CalculosService {
         porcentajeMinimoLibre = porcentajeLibreDelDia;
       }
 
-      // Acumular horas sin asignar (asumiendo 8 horas por día laboral)
-      const horasPorDia = 8;
+      // Acumular horas sin asignar basadas en el registro
       horasTotalesSinAsignar += (porcentajeLibreDelDia / 100) * horasPorDia;
     }
 
@@ -274,6 +265,42 @@ export class CalculosService {
   // ============================
   // Helpers
   // ============================
+  /**
+   * Busca el registro apropiado para un día específico.
+   * Prioriza registros reales sobre estimaciones según el modo tipoDato.
+   */
+  private buscarRegistroParaDia(
+    dia: Date,
+    registros: Registro[],
+    tipoDato: 'real' | 'estimacion' | 'mixta',
+    mesesConReales: Set<string>,
+  ): Registro | null {
+    const mesKey = `${dia.getFullYear()}-${String(dia.getMonth() + 1).padStart(2, '0')}`;
+
+    // Filtrar registros que incluyan este día
+    const registrosValidos = registros.filter((r) => {
+      const inicio = new Date(r.fechaInicio);
+      const fin = new Date(r.fechaFin);
+      return dia >= inicio && dia <= fin;
+    });
+
+    if (registrosValidos.length === 0) return null;
+
+    // Lógica de priorización según tipoDato
+    if (tipoDato === 'real') {
+      return registrosValidos.find((r) => r.tipoDato === 'real') ?? null;
+    } else if (tipoDato === 'estimacion') {
+      return registrosValidos.find((r) => r.tipoDato === 'estimacion') ?? null;
+    } else {
+      // Modo mixta: priorizar real si existe para ese mes
+      if (mesesConReales.has(mesKey)) {
+        return registrosValidos.find((r) => r.tipoDato === 'real') ?? null;
+      } else {
+        return registrosValidos.find((r) => r.tipoDato === 'estimacion') ?? registrosValidos[0];
+      }
+    }
+  }
+
   private rangoSolapado(inicioA: Date, finA: Date, inicioB: Date, finB: Date): boolean {
     return inicioA <= finB && finA >= inicioB;
   }

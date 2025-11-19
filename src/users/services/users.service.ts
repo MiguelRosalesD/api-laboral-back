@@ -38,11 +38,14 @@ export class UsersService {
       const { password: _, ...result } = newUser;
       return result as User;
     } catch (error) {
+      // Log del error para debugging
+      console.error('Error al registrar usuario:', error);
+      
       // Manejo de error: email duplicado
       if (error.code === '23505' || error.detail?.includes('already exists')) { 
         throw new ConflictException('El correo electrónico ya está registrado.');
       }
-      throw new InternalServerErrorException('Error desconocido al registrar.');
+      throw new InternalServerErrorException(`Error al registrar: ${error.message || error}`);
     }
   }
 

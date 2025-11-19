@@ -52,7 +52,7 @@ export class ImportService {
             tipoDato: 'real',
             devengado,
             aportacion,
-            horas: 1800,
+            horas: 160,
             fechaInicio: new Date(fechaInicio),
             fechaFin: new Date(fechaFin),
             empresa,
