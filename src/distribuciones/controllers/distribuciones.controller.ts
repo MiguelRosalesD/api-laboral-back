@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, ParseIntPipe, UseInterceptors } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
 import { DistribucionesService } from '../services/distribuciones.service';
 import { CreateDistribucionDto } from '../dto/create-distribucion.dto';
@@ -7,6 +7,7 @@ import { Distribucion } from '../entities/distribucion.entity';
 
 @ApiTags('distribuciones')
 @Controller('distribuciones')
+@UseInterceptors(require('../../common/interceptors/auditoria.interceptor').AuditoriaInterceptor)
 export class DistribucionesController {
   constructor(private readonly distribucionesService: DistribucionesService) {}
 

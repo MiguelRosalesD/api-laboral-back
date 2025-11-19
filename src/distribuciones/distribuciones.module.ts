@@ -5,9 +5,10 @@ import { DistribucionesController } from './controllers/distribuciones.controlle
 import { Distribucion } from './entities/distribucion.entity';
 import { Perfil } from '../perfiles/entities/perfil.entity';
 import { Proyecto } from '../proyectos/entities/proyecto.entity';
+import { AuditoriaModule } from '../auditoria/auditoria.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Distribucion, Perfil, Proyecto])],
+  imports: [TypeOrmModule.forFeature([Distribucion, Perfil, Proyecto]), AuditoriaModule],
   controllers: [DistribucionesController],
   providers: [DistribucionesService],
   exports: [DistribucionesService],

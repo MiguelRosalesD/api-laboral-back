@@ -1,6 +1,6 @@
 // src/perfiles/controllers/perfiles.controller.ts
 
-import { Controller, Get, Post, Put, Delete, Param, Body, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, ParseIntPipe, UseGuards, UseInterceptors } from '@nestjs/common';
 import { PerfilesService } from '../services/perfiles.service';
 import { CreatePerfilDto } from '../dto/create-perfil.dto';
 import { UpdatePerfilDto } from '../dto/update-perfil.dto';
@@ -17,6 +17,7 @@ import { UserRole } from '../../common/enums/user-role.enum';     // Importar el
 // Aplicamos el JWT Guard y el Roles Guard a nivel de controlador para que todos los métodos
 // requieran autenticación y pasen por la comprobación de roles.
 @UseGuards(JwtAuthGuard, RolesGuard)
+@UseInterceptors(require('../../common/interceptors/auditoria.interceptor').AuditoriaInterceptor)
 export class PerfilesController {
   constructor(private readonly perfilesService: PerfilesService) {}
 

@@ -24,6 +24,11 @@ export class RolesGuard implements CanActivate {
     // 2. Obtener el usuario autenticado (inyectado por JwtAuthGuard en req.user)
     const { user } = context.switchToHttp().getRequest();
     
+    // Si no hay usuario autenticado, denegar acceso
+    if (!user) {
+      return false;
+    }
+    
     // El objeto 'user' viene del payload del JWT. 
     // Debe tener la propiedad 'role' (ej. { id: '...', email: '...', role: 'admin' })
 

@@ -84,13 +84,17 @@ export class CalculosService {
       let totalHorasPerfil = 0;
 
       // Iterar día a día en el rango de consulta
-      for (let dia = new Date(consultaInicio); dia <= consultaFin; dia.setDate(dia.getDate() + 1)) {
-        const diaActual = new Date(dia);
+      let diaIteracion = new Date(consultaInicio);
+      while (diaIteracion <= consultaFin) {
+        const diaActual = new Date(diaIteracion);
         const mesKey = `${diaActual.getFullYear()}-${String(diaActual.getMonth() + 1).padStart(2, '0')}`;
 
         // Buscar el registro para este día (priorizando real sobre estimación)
         const registroDelDia = this.buscarRegistroParaDia(diaActual, registrosPerfil, tipoDato, mesesConReales);
-        if (!registroDelDia) continue;
+        if (!registroDelDia) {
+          diaIteracion.setDate(diaIteracion.getDate() + 1);
+          continue;
+        }
 
         // Calcular horas/devengado/aportación por día del registro
         const diasDelRegistro = this.diasEntre(new Date(registroDelDia.fechaInicio), new Date(registroDelDia.fechaFin));
@@ -147,24 +151,29 @@ export class CalculosService {
           totalDevengadoPerfil += devengadoAsignado;
           totalAportacionPerfil += aportacionAsignada;
         }
+
+        // Avanzar al siguiente día
+        diaIteracion.setDate(diaIteracion.getDate() + 1);
       }
 
-      // Convertir a estructura final
-      const mesesResult: ResultadoMes[] = Object.keys(mesesMap).map((mesKey) => {
-        const mesData = mesesMap[mesKey];
-        return {
-          mes: mesKey,
-          proyectos: Object.values(mesData.proyectosMap).map((p) => ({
-            ...p,
-            horas: Number(p.horas.toFixed(2)),
-            devengado: Number(p.devengado.toFixed(2)),
-            aportacion: Number(p.aportacion.toFixed(2)),
-          })),
-          totalDevengado: Number(mesData.totalDevengado.toFixed(2)),
-          totalAportacion: Number(mesData.totalAportacion.toFixed(2)),
-          totalHoras: Number(mesData.totalHoras.toFixed(2)),
-        };
-      });
+      // Convertir a estructura final y ordenar por mes
+      const mesesResult: ResultadoMes[] = Object.keys(mesesMap)
+        .sort() // Ordenar cronológicamente (YYYY-MM se ordena alfabéticamente)
+        .map((mesKey) => {
+          const mesData = mesesMap[mesKey];
+          return {
+            mes: mesKey,
+            proyectos: Object.values(mesData.proyectosMap).map((p) => ({
+              ...p,
+              horas: Number(p.horas.toFixed(2)),
+              devengado: Number(p.devengado.toFixed(2)),
+              aportacion: Number(p.aportacion.toFixed(2)),
+            })),
+            totalDevengado: Number(mesData.totalDevengado.toFixed(2)),
+            totalAportacion: Number(mesData.totalAportacion.toFixed(2)),
+            totalHoras: Number(mesData.totalHoras.toFixed(2)),
+          };
+        });
 
       resultadosPerfiles.push({
         perfil: perfil.nombre,

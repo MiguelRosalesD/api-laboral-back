@@ -11,6 +11,7 @@ import { RegistrosModule } from './registros/registros.module';
 import { ImportModule } from './import/import.module';
 import { CreateUploadsFolderMiddleware } from './common/middleware/create-uploads-folder.middleware';
 import { CalculosModule } from './calculos/calculos.module';
+import { AuditoriaModule } from './auditoria/auditoria.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { CalculosModule } from './calculos/calculos.module';
     RegistrosModule,
     ImportModule,
     CalculosModule,
+    AuditoriaModule,
   ],
   controllers: [],
   providers: [],
