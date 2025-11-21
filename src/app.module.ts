@@ -1,6 +1,7 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { StatusModule } from './status/status.module';
@@ -12,6 +13,7 @@ import { ImportModule } from './import/import.module';
 import { CreateUploadsFolderMiddleware } from './common/middleware/create-uploads-folder.middleware';
 import { CalculosModule } from './calculos/calculos.module';
 import { AuditoriaModule } from './auditoria/auditoria.module';
+import { AuditoriaInterceptor } from './common/interceptors/auditoria.interceptor';
 
 @Module({
   imports: [
@@ -42,7 +44,12 @@ import { AuditoriaModule } from './auditoria/auditoria.module';
     AuditoriaModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditoriaInterceptor,
+    },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

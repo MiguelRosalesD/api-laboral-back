@@ -10,8 +10,8 @@ export class AuditoriaQueryDto {
   accion?: 'CREATE' | 'UPDATE' | 'DELETE';
 
   @IsOptional()
-  @IsIn(['Perfil', 'Proyecto', 'Distribucion', 'Registro'])
-  entidad?: 'Perfil' | 'Proyecto' | 'Distribucion' | 'Registro';
+  @IsIn(['Perfil', 'Proyecto', 'Distribucion', 'Registro', 'ImportExcel'])
+  entidad?: 'Perfil' | 'Proyecto' | 'Distribucion' | 'Registro' | 'ImportExcel';
 
   @IsOptional()
   @IsString()

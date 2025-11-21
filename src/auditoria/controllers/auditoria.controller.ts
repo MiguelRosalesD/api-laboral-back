@@ -25,7 +25,7 @@ export class AuditoriaController {
 
   @Get(':entidad/:entidadId')
   async findByEntidad(
-    @Param('entidad') entidad: 'Perfil' | 'Proyecto' | 'Distribucion' | 'Registro',
+    @Param('entidad') entidad: 'Perfil' | 'Proyecto' | 'Distribucion' | 'Registro' | 'ImportExcel',
     @Param('entidadId') entidadId: number,
   ): Promise<Auditoria[]> {
     return this.auditoriaService.findByEntidad(entidad, entidadId);

@@ -1,6 +1,6 @@
 // src/proyectos/controllers/proyectos.controller.ts
 
-import { Controller, Get, Post, Put, Delete, Param, Body, ParseIntPipe, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, ParseIntPipe, UseGuards } from '@nestjs/common';
 import { ProyectosService } from '../services/proyectos.service';
 import { CreateProyectoDto } from '../dto/create-proyecto.dto';
 import { UpdateProyectoDto } from '../dto/update-proyecto.dto';
@@ -16,7 +16,6 @@ import { UserRole } from '../../common/enums/user-role.enum';
 @Controller('proyectos')
 // Aplicamos JWT Guard y Roles Guard a nivel de controlador
 @UseGuards(JwtAuthGuard, RolesGuard)
-@UseInterceptors(require('../../common/interceptors/auditoria.interceptor').AuditoriaInterceptor)
 export class ProyectosController {
   constructor(private readonly proyectosService: ProyectosService) {}
 

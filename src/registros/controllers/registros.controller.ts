@@ -1,6 +1,6 @@
 // src/registros/controllers/registros.controller.ts
 
-import { Controller, Get, Post, Put, Delete, Param, Body, ParseIntPipe, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, ParseIntPipe, UseGuards } from '@nestjs/common';
 import { RegistrosService } from '../services/registros.service';
 import { CreateRegistroDto } from '../dto/create-registro.dto';
 import { UpdateRegistroDto } from '../dto/update-registro.dto';
@@ -16,7 +16,6 @@ import { UserRole } from '../../common/enums/user-role.enum';
 @Controller('registros')
 // Aplicamos JWT Guard y Roles Guard a nivel de controlador
 @UseGuards(JwtAuthGuard, RolesGuard)
-@UseInterceptors(require('../../common/interceptors/auditoria.interceptor').AuditoriaInterceptor)
 export class RegistrosController {
   constructor(private readonly registrosService: RegistrosService) {}
 

@@ -15,7 +15,7 @@ export class Auditoria {
   accion: 'CREATE' | 'UPDATE' | 'DELETE';
 
   @Column({ length: 50 })
-  entidad: 'Perfil' | 'Proyecto' | 'Distribucion' | 'Registro';
+  entidad: 'Perfil' | 'Proyecto' | 'Distribucion' | 'Registro' | 'ImportExcel';
 
   @Column()
   entidadId: number;

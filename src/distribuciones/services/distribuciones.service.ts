@@ -12,7 +12,7 @@ export class DistribucionesService {
     private readonly distribucionRepo: Repository<Distribucion>,
   ) {}
 
-  create(dto: CreateDistribucionDto) {
+  async create(dto: CreateDistribucionDto) {
     const dist = this.distribucionRepo.create({
       perfil: { id: dto.perfilId } as any,
       proyecto: { id: dto.proyectoId } as any,
@@ -21,7 +21,12 @@ export class DistribucionesService {
       porcentaje: dto.porcentaje,
       estado: dto.estado,
     });
-    return this.distribucionRepo.save(dist);
+    const saved = await this.distribucionRepo.save(dist);
+    // Recargar con relaciones para el interceptor
+    return this.distribucionRepo.findOne({ 
+      where: { id: saved.id }, 
+      relations: ['perfil', 'proyecto'] 
+    });
   }
 
   findAll() {
@@ -43,6 +48,8 @@ export class DistribucionesService {
   async remove(id: number) {
     const dist = await this.findOne(id);
     await this.distribucionRepo.remove(dist);
+    // Devolver la distribución eliminada para el interceptor
+    return dist;
   }
 
   async getDistribucionesPorPerfil(

@@ -1,4 +1,4 @@
-import { Controller, Get, Query, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Query, BadRequestException, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
@@ -6,9 +6,12 @@ import { CalculosService } from './calculos.service';
 import { CalculosQueryDto } from './dto/calculos-query.dto';
 import { Perfil } from '../perfiles/entities/perfil.entity';
 import { Registro } from '../registros/entities/registro.entity';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guards';
 
 @ApiTags('cálculos')
 @Controller('calculos')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class CalculosController {
   constructor(
     private readonly calculosService: CalculosService,

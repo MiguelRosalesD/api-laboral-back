@@ -1,17 +1,22 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, ParseIntPipe, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, ParseIntPipe, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
 import { DistribucionesService } from '../services/distribuciones.service';
 import { CreateDistribucionDto } from '../dto/create-distribucion.dto';
 import { UpdateDistribucionDto } from '../dto/update-distribucion.dto';
 import { Distribucion } from '../entities/distribucion.entity';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guards';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '../../common/enums/user-role.enum';
 
 @ApiTags('distribuciones')
 @Controller('distribuciones')
-@UseInterceptors(require('../../common/interceptors/auditoria.interceptor').AuditoriaInterceptor)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class DistribucionesController {
   constructor(private readonly distribucionesService: DistribucionesService) {}
 
   @Post()
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Crear una nueva distribución' })
   @ApiBody({ type: CreateDistribucionDto })
   @ApiResponse({ status: 201, description: 'Distribución creada correctamente' })
@@ -36,6 +41,7 @@ export class DistribucionesController {
   }
 
   @Patch(':id')
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Actualizar una distribución existente' })
   @ApiParam({ name: 'id', type: Number, example: 1 })
   @ApiBody({ type: UpdateDistribucionDto })
@@ -46,11 +52,12 @@ export class DistribucionesController {
   }
 
   @Delete(':id')
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Eliminar una distribución por ID' })
   @ApiParam({ name: 'id', type: Number, example: 1 })
   @ApiResponse({ status: 200, description: 'Distribución eliminada correctamente' })
   @ApiResponse({ status: 404, description: 'Distribución no encontrada' })
-  async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
+  async remove(@Param('id', ParseIntPipe) id: number) {
     return this.distribucionesService.remove(id);
   }
 }
