@@ -25,7 +25,7 @@ export class ImportService {
 
       const results: Registro[] = [];
 
-      //  Recorremos todas las hojas del Excel
+      // Recorrer hojas del Excel
       for (const sheetName of workbook.SheetNames) {
         const sheet = workbook.Sheets[sheetName];
         const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: null });
@@ -39,14 +39,14 @@ export class ImportService {
           // Saltar filas vacías o encabezados
           if (!nombre || !dni || nombre.toUpperCase() === 'TRABAJADOR') continue;
 
-          //  Buscar o crear perfil
+          // Buscar o crear perfil
           let perfil = await this.perfilRepo.findOne({ where: { dni } });
           if (!perfil) {
             perfil = this.perfilRepo.create({ nombre, dni });
             perfil = await this.perfilRepo.save(perfil);
           }
 
-          //  Crear registro asociado con valores por defecto y fechas del frontend
+          // Crear registro
           const registroData: Partial<Registro> = {
             perfil,
             tipoDato: 'real',
@@ -67,14 +67,14 @@ export class ImportService {
         }
       }
 
-      //  Borrar el archivo Excel después de procesarlo
+      // Borrar archivo temporal
       await fs.unlink(filePath).catch(() => {
-        console.warn(`⚠️ No se pudo eliminar el archivo temporal: ${filePath}`);
+        console.warn(`No se pudo eliminar: ${filePath}`);
       });
 
       return results;
     } catch (err) {
-      // Intentar limpiar incluso en caso de error
+      // Limpiar archivo en caso de error
       await fs.unlink(filePath).catch(() => {});
       throw new BadRequestException(`Error procesando Excel: ${err.message ?? err}`);
     }

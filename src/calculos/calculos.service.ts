@@ -8,10 +8,7 @@ import { ResultadoConsulta, ResultadoPerfil, ResultadoMes, ResultadoProyecto, Re
 export class CalculosService {
   constructor(private readonly distribucionesService: DistribucionesService) {}
 
-  /**
-   * Calcula el desglose de las nóminas por perfil -> mes -> proyecto
-   * calculando día a día y prorrateando horas/devengado/aportación según los días del registro.
-   */
+  // Calcular desglose de nóminas por perfil -> mes -> proyecto
   async calcularDistribucion(
     perfiles: Perfil[],
     registros: Registro[],

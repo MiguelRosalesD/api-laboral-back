@@ -22,7 +22,7 @@ export class DistribucionesService {
       estado: dto.estado,
     });
     const saved = await this.distribucionRepo.save(dist);
-    // Recargar con relaciones para el interceptor
+    // Recargar con relaciones
     return this.distribucionRepo.findOne({ 
       where: { id: saved.id }, 
       relations: ['perfil', 'proyecto'] 
@@ -48,7 +48,6 @@ export class DistribucionesService {
   async remove(id: number) {
     const dist = await this.findOne(id);
     await this.distribucionRepo.remove(dist);
-    // Devolver la distribución eliminada para el interceptor
     return dist;
   }
 

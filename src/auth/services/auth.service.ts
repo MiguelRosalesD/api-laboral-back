@@ -17,7 +17,7 @@ export class AuthService {
   ) {} 
 
   async createFrontPayload(payload_user: Omit<User, 'password'>) {
-    // Payload simple para ambos tokens
+    // Payload para tokens
     const tokenPayload: Record<string, unknown> = {
       id: payload_user.id,
       email: payload_user.email,
@@ -25,10 +25,10 @@ export class AuthService {
       nombre: payload_user.nombre,
     };
 
-    // Generar token de acceso (usa configuración por defecto del JwtModule)
+    // Generar access token
     const access_token = await this.jwtService.signAsync(tokenPayload as Record<string, any>);
 
-    // Preparar expiresIn del refresh token con el tipo correcto
+    // Configurar refresh token
     const rawRefresh = process.env.JWT_REFRESH_EXPIRATION ?? '7d';
     const refreshExpires: number | import('ms').StringValue = /^\d+$/.test(rawRefresh)
       ? parseInt(rawRefresh, 10)
@@ -36,7 +36,7 @@ export class AuthService {
 
     const refresh_secret = process.env.JWT_REFRESH_SECRET ?? process.env.JWT_SECRET;
 
-    // Generar token de refresco con su propia configuración
+    // Generar refresh token
     const refresh_token = await this.jwtService.signAsync(tokenPayload as Record<string, any>, {
       expiresIn: refreshExpires,
       secret: refresh_secret,
@@ -53,26 +53,25 @@ export class AuthService {
   }
 
   async login(loginDto: loginDto) {
-    // Busca el usuario por email (delegado a UsersService)
+    // Buscar usuario por email
     const user = await this.usersService.findOneByEmail(loginDto.email);
 
-    // Manejo de excepción centralizado
     if (!user) {
       throw new UnauthorizedException('Credenciales incorrectas o usuario no encontrado');
     }
     
-    // Compara la contraseña
+    // Validar contraseña
     const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
 
     if (!isPasswordValid) {
       throw new UnauthorizedException('Credenciales incorrectas o usuario no encontrado');
     }
     
-    // Devuelve el objeto usuario sin la contraseña
+    // Remover password del objeto usuario
     const { password, ...result } = user;
     const cleanUserPayload = result as Omit<User, 'password'>;
 
-    // Llama a la función para generar el payload con los tokens
+    // Generar payload con tokens
     return this.createFrontPayload(cleanUserPayload);
   }
     

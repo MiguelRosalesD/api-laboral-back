@@ -14,15 +14,15 @@ export class UsersService {
     private usersRepository: Repository<User>,
   ) {}
 
-  // 2.1: CREAR USUARIO (REGISTRO SEGURO)
+  // Crear usuario
   async create(registerDto: registerDto): Promise<User> {
     const { password, email, name, role } = registerDto;
 
-    // Generar Salt y Hash la contraseña
+    // Generar hash de contraseña
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Crear la entidad con el hash
+    // Crear entidad
     const newUser = this.usersRepository.create({
       email,
       nombre: name,
@@ -31,17 +31,16 @@ export class UsersService {
     });
 
     try {
-      // Guardar en la Base de Datos
+      // Guardar en BD
       await this.usersRepository.save(newUser);
       
-      // Devolver el usuario limpio (sin password)
+      // Devolver usuario sin password
       const { password: _, ...result } = newUser;
       return result as User;
     } catch (error) {
-      // Log del error para debugging
       console.error('Error al registrar usuario:', error);
       
-      // Manejo de error: email duplicado
+      // Email duplicado
       if (error.code === '23505' || error.detail?.includes('already exists')) { 
         throw new ConflictException('El correo electrónico ya está registrado.');
       }
@@ -49,15 +48,13 @@ export class UsersService {
     }
   }
 
-  // 2.2: BUSCAR USUARIO POR EMAIL (PARA LOGIN)
+  // Buscar usuario por email
   async findOneByEmail(email: string): Promise<User | undefined> {
     
-    // Busca el usuario (TypeORM retorna User | null)
     const user = await this.usersRepository.findOne({ 
       where: { email },
     });
     
-    // Corrige el error de tipado: convierte 'null' a 'undefined' si no se encuentra.
     return user ?? undefined;
   }
 }

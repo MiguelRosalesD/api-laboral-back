@@ -18,14 +18,14 @@ export class AuditoriaInterceptor implements NestInterceptor {
           return;
         }
 
-        // Solo auditar operaciones CUD (Create, Update, Delete)
+        // Solo auditar CUD (Create, Update, Delete)
         let accion: 'CREATE' | 'UPDATE' | 'DELETE' | undefined;
         if (method === 'POST') accion = 'CREATE';
         else if (method === 'PATCH' || method === 'PUT') accion = 'UPDATE';
         else if (method === 'DELETE') accion = 'DELETE';
         else return;
 
-        // Mapear rutas plurales a nombres de entidad singulares
+        // Mapear rutas a entidades
         const entityMap: Record<string, 'Perfil' | 'Proyecto' | 'Distribucion' | 'Registro' | 'ImportExcel'> = {
           'perfiles': 'Perfil',
           'proyectos': 'Proyecto',
@@ -35,18 +35,15 @@ export class AuditoriaInterceptor implements NestInterceptor {
         };
 
         // Extraer entidad e ID de la URL
-        // Formato: /perfiles/:id o /perfiles (para POST) o /import/excel
         const match = url.match(/\/(perfiles|proyectos|distribuciones|registros|import)(?:\/(excel|\d+))?/);
         if (!match) return;
 
         const routeName = match[1];
         const entidad = entityMap[routeName];
         
-        // Para CREATE, el ID viene en la respuesta
-        // Para UPDATE/DELETE, el ID viene en la URL
         let entidadId: number | undefined;
         if (accion === 'CREATE') {
-          // Para imports de Excel, usar timestamp como ID único
+          // Para imports usar timestamp
           if (routeName === 'import') {
             entidadId = Date.now();
           } else {

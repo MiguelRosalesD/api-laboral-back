@@ -34,7 +34,7 @@ export class CalculosController {
       throw new BadRequestException('Rango de fechas inválido');
     }
 
-    // Convertir IDs de strings a números
+    // Convertir a números
     const perfilIds = perfiles ? perfiles.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : undefined;
     const proyectoIds = proyectos ? proyectos.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : undefined;
 
@@ -51,7 +51,7 @@ export class CalculosController {
         : undefined,
     };
 
-    // Obtener perfiles filtrados por ID si se indica, si no todos
+    // Obtener perfiles
     const wherePerfiles = perfilIds ? { id: In(perfilIds) } : {};
     const perfilesArr = await this.perfilRepository.find({ where: wherePerfiles });
 
@@ -59,7 +59,7 @@ export class CalculosController {
       throw new BadRequestException('No se encontraron perfiles con los IDs proporcionados');
     }
 
-    // Obtener registros filtrados por los perfiles seleccionados y opcionalmente por empresa
+    // Obtener registros
     const whereRegistros: any = { perfil: In(perfilesArr.map(p => p.id)) };
     if (filtros.empresas && filtros.empresas.length > 0) {
       whereRegistros.empresa = In(filtros.empresas);
@@ -89,7 +89,7 @@ export class CalculosController {
       throw new BadRequestException('Rango de fechas inválido');
     }
 
-    // Obtener el primer ID de perfil
+    // Obtener ID de perfil
     const perfilId = perfiles ? parseInt(perfiles.split(',')[0].trim()) : undefined;
     if (!perfilId || isNaN(perfilId)) {
       throw new BadRequestException('Debes indicar al menos un ID de perfil válido');
